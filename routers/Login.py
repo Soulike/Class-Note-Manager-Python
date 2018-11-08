@@ -20,7 +20,7 @@ def login():
     cur.execute('SELECT {0} FROM {1} WHERE {2}=%s'.format('password', 'accounts', 'username'), (username,))
     result = cur.fetchone()
 
-    if len(result) == 0:
+    if result is None or len(result) == 0:
         res = Response(False, '用户不存在', {})
     elif password == result[0]:
         res = Response(True, '登录成功', {})

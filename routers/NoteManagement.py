@@ -1,4 +1,4 @@
-from flask import Blueprint, request
+from flask import Blueprint, request, session
 
 from modules import MDConverter
 from objects import Response
@@ -23,9 +23,9 @@ def getNote():
 
 @NoteManagement.route('/noteConvert', methods = ['POST'])
 def noteConvert():
-    # username = session['username']
-    # if username is None:
-    #    return Response(False, '登录状态失效', {}).getJson()
+    username = session['username']
+    if username is None:
+        return Response(False, '登录状态失效', {}).getJson()
 
     req = request.get_json()
     markdown = req['markdown']
