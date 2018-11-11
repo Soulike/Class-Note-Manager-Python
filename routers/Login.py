@@ -1,9 +1,10 @@
 from flask import Blueprint
 from flask import request
 from flask import session
+from flask import g
 
-from database import getDbCur
 from objects import Response
+from functions import log
 
 Login = Blueprint('Login', __name__)
 
@@ -15,17 +16,23 @@ def login():
     username = req['username']
     password = req['password']
 
-    cur = getDbCur()
+    try:
+        cur = g.conn.cursor()
 
-    cur.execute('SELECT {0} FROM {1} WHERE {2}=%s'.format('password', 'accounts', 'username'), (username,))
-    result = cur.fetchone()
+        cur.execute('SELECT {0},{1} FROM {2} WHERE {3}=%s'.format('id', 'password', 'accounts', 'username'),
+                    (username,))
+        result = cur.fetchone()
+        cur.close()
 
-    if result is None or len(result) == 0:
-        res = Response(False, '用户不存在', {})
-    elif password == result[0]:
-        res = Response(True, '登录成功', {})
-        session['username'] = username
-    else:
-        res = Response(False, '密码错误', {})
+        if result is None or len(result) == 0:
+            res = Response(False, '用户不存在', {})
+        elif password == result[1]:
+            res = Response(True, '登录成功', {})
+            session['id'] = result[2]
+        else:
+            res = Response(False, '密码错误', {})
+    except Exception as e:
+        res = Response(False, '服务器错误', {})
+        log(e)
 
     return res.getJson()

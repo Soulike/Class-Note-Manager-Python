@@ -1,16 +1,15 @@
+from flask import g
 import psycopg2
-
-dbCur = None
 
 
 # 服务器启动时调用，连接数据库
 def connectDatabase(address, port, dbname, username, password):
-    global dbCur
-    conn = psycopg2.connect(hostaddr = address, port = port, dbname = dbname, user = username,
-                            password = password)
-    dbCur = conn.cursor()
+    if not hasattr(g, 'conn'):
+        conn = psycopg2.connect(hostaddr = address, port = port, dbname = dbname, user = username,
+                                password = password)
+        g.conn = conn
 
 
-# 返回数据库连接指针
-def getDbCur():
-    return dbCur
+def closeDatabase():
+    if hasattr(g, 'conn'):
+        g.conn.close()
