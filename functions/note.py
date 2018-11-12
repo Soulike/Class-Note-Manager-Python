@@ -1,10 +1,6 @@
-from datetime import datetime
 from main import NOTE_FILE_POSITION
+from .log import log
 import os
-
-
-def log(msg):
-    print('{0} {1}'.format(datetime.now(), msg))
 
 
 # 读取笔记文件并返回内容

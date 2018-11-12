@@ -2,18 +2,20 @@ from flask import Blueprint, request, session, g
 
 from modules import MDConverter
 from objects import Response
-
+import time
+from functions import *
 
 NoteManagement = Blueprint('NoteManagement', __name__)
 
 
-@NoteManagement.route('/submitNote', method = ['POST'])
+@NoteManagement.route('/submitNote', methods = ['POST'])
 def submitNote():
     userId = session['id']
     if userId is None:
         res = Response(False, '登录状态失效', {}).getJson()
     else:
-        cur = g.conn.cursor()
+        conn = g.conn
+        cur = conn.cursor()
         cur.execute('SELECT {0} FROM {1} WHERE {2}=%s'.format('username', 'accounts', 'id'), (userId,))
         result = cur.fetchone()
 
@@ -22,13 +24,47 @@ def submitNote():
         else:
             req = request.get_json()
 
+            fileName = req['fileName']
             noteContent = req['noteContent']
             noteId = req['noteId']
+            nowTime = round(time.time() * 1000)
 
-            if noteId == -1:  # 是一个新的笔记
-                pass
+            if fileName is None or noteContent is None or noteId is None:
+                res = Response(False, '提交格式非法', {})
+            elif noteId == -1:  # 是一个新的笔记
+                try:
+                    # 向数据库插入笔记信息
+                    cur.execute(
+                        'INSERT INTO {0} (name, submit_time, last_modify_time, account_id) VALUES (%s, %s, %s, %s)'.format(
+                            'notes'), (fileName, nowTime, nowTime, userId))
+                    conn.commit()
+                except Exception as e:
+                    conn.rollback()
+                    log(e)
+                    res = Response(False, '提交失败，请重试', {})
+                else:
+                    # 写入笔记文件
+                    cur.execute('SELECT {0} FROM {1} WHERE {2}=%s'.format('id', 'notes', 'submit_time'), (nowTime,))
+                    result = cur.fetchone()
+                    noteId = result[0]
+                    # 如果笔记文件写入失败了，就把数据库记录也删掉
+                    if not writeNoteFile(noteId, noteContent):
+                        cur.execute('DELETE FROM {0} WHERE {1}=%s'.format('notes, submit_time'), (nowTime,))
+                        conn.commit()
+                        res = Response(False, '提交失败，请重试', {})
+                    else:
+                        res = Response(True, '提交成功', {})
             else:  # 是修改以前的笔记
-                pass
+                if not writeNoteFile(noteId, noteContent):
+                    res = Response(False, '修改失败，请重试', {})
+                else:
+                    # 这一步操作失败了也没有太大关系
+                    cur.execute(
+                        'UPDATE {0} SET {1} = {2} WHERE {3}=%s'.format('notes', 'last_modify_time', nowTime, 'noteId'),
+                        noteId)
+                    conn.commit()
+                    res = Response(True, '修改成功', {})
+    return res.getJson()
 
 
 @NoteManagement.route('/deleteNote', methods = ['POST'])
@@ -43,7 +79,41 @@ def getNoteList():
 
 @NoteManagement.route('/getNote', methods = ['GET'])
 def getNote():
-    pass
+    userId = session['id']
+    if userId is None:
+        res = Response(False, '登录状态失效', {}).getJson()
+    else:
+        conn = g.conn
+        cur = conn.cursor()
+        cur.execute('SELECT {0} FROM {1} WHERE {2}=%s'.format('username', 'accounts', 'id'), (userId,))
+        result = cur.fetchone()
+
+        if result is None or len(result) == 0:
+            res = Response(False, '用户不存在', {})
+        else:
+            req = request.get_json()
+
+            noteId = req['id']
+
+            if noteId is None or noteId <= 0:
+                res = Response(False, '提交格式非法', {})
+            else:
+                try:
+                    noteContent = readNoteFile(noteId)
+                    cur.execute(
+                        'SELECT {0},{1} FROM {2} WHERE {3}=%s'.format('name', 'last_modify_time', 'notes', 'id'),
+                        noteId)
+                    result = cur.fetchone()
+                    title = result[0]
+                    last_modify_time = result[1]
+                except IOError as e:
+                    res = Response(False, '服务器错误', {})
+                    log(e)
+                else:
+                    converter = MDConverter()
+                    res = Response(True, '获取成功', {'title': title, 'lastModifiedDate': last_modify_time,
+                                                  'content': converter.makeHtml(noteContent)})
+    return res.getJson()
 
 
 @NoteManagement.route('/noteConvert', methods = ['POST'])
@@ -56,7 +126,7 @@ def noteConvert():
         if markdown is None:
             res = Response(True, '转换成功', '').getJson()
         else:
-            converter = MDConverter.MDConverter()
+            converter = MDConverter()
             result = converter.makeHtml(markdown)
             res = Response(True, '转换成功', result).getJson()
 

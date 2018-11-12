@@ -1,6 +1,6 @@
 CREATE TABLE public.accounts
 (
-    id integer DEFAULT nextval('accounts_id_seq'::regclass) PRIMARY KEY NOT NULL,
+    id SERIAL PRIMARY KEY NOT NULL,
     username varchar(255) NOT NULL,
     password varchar(255) NOT NULL
 );
@@ -8,7 +8,7 @@ CREATE UNIQUE INDEX accounts_id_uindex ON public.accounts (id);
 INSERT INTO public.accounts (id, username, password) VALUES (1, 'test', '85777f270ad7cf2a790981bbae3c4e484a1dc55e24a77390d692fbf1cffa12fa');
 CREATE TABLE public.notes
 (
-    id integer DEFAULT nextval('note_id_seq'::regclass) PRIMARY KEY NOT NULL,
+    id SERIAL PRIMARY KEY NOT NULL,
     name varchar(255) NOT NULL,
     submit_time timestamp NOT NULL,
     last_update_time timestamp NOT NULL,

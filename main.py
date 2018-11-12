@@ -1,11 +1,17 @@
-import os
 import atexit
-from flask import Flask
-
+from flask import Flask, g
+import psycopg2
 from components import *
-from database import connectDatabase, closeDatabase
-from functions import *
+from functions import log
 from routers import routers
+import os
+
+
+# 服务器启动时调用，连接数据库
+def connectDatabase(address, port, dbname, username, password):
+    return psycopg2.connect(hostaddr = address, port = port, dbname = dbname, user = username,
+                            password = password)
+
 
 # 读取设置文件
 try:
@@ -31,9 +37,17 @@ try:
 
 
     routers.registerRouters(app)
-    connectDatabase(DATABASE_ADDRESS, DATABASE_PORT, DATABASE_NAME, DATABASE_USERNAME, DATABASE_PASSWORD)
+    if not hasattr(g, 'conn'):
+        g.conn = connectDatabase(DATABASE_ADDRESS, DATABASE_PORT, DATABASE_NAME, DATABASE_USERNAME,
+                                 DATABASE_PASSWORD)
 
-    atexit.register(closeDatabase)  # 在应用程序退出之前关闭数据库连接
+
+    def disconnectDatabase():
+        if hasattr(g, 'conn'):
+            g.conn.close()
+
+
+    atexit.register(disconnectDatabase)  # 在应用程序退出之前关闭数据库连接
 
     if __name__ == '__main__':
         log('服务器运行在 {0} 端口上'.format(LISTEN_PORT))
