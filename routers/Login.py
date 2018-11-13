@@ -2,8 +2,7 @@ from flask import Blueprint
 from flask import request
 
 from objects import Response
-from functions.session import *
-from functions.note import *
+from functions import log, session
 import database
 
 Login = Blueprint('Login', __name__)
@@ -29,11 +28,21 @@ def login():
             res = Response(False, '用户不存在', {})
         elif password == result[1]:
             res = Response(True, '登录成功', {})
-            setSession(result[0])
+            session.setSession(result[0])
         else:
             res = Response(False, '密码错误', {})
     except Exception as e:
         res = Response(False, '服务器错误', {})
         log(e)
 
+    return res.getJson()
+
+
+@Login.route('/validSession', methods = ['GET'])
+def validSession():
+    userId = session.getSessionUserId()
+    if userId is None:
+        res = Response(False, '会话已失效', {})
+    else:
+        res = Response(True, '会话有效', {})
     return res.getJson()

@@ -2,9 +2,8 @@ from flask import Blueprint, request
 
 from modules import MDConverter
 from objects import Response
-from functions.session import *
-from functions.log import *
-from functions.note import *
+from datetime import datetime
+from functions import session, note, log
 import database
 
 NoteManagement = Blueprint('NoteManagement', __name__)
@@ -12,7 +11,7 @@ NoteManagement = Blueprint('NoteManagement', __name__)
 
 @NoteManagement.route('/submitNote', methods = ['POST'])
 def submitNote():
-    userId = getSessionUserId()
+    userId = session.getSessionUserId()
     if userId is None:
         res = Response(False, '登录状态失效', {})
     else:
@@ -51,14 +50,14 @@ def submitNote():
                     result = cur.fetchone()
                     noteId = result[0]
                     # 如果笔记文件写入失败了，就把数据库记录也删掉
-                    if not writeNoteFile(noteId, noteContent):
+                    if not note.writeNoteFile(noteId, noteContent):
                         cur.execute('DELETE FROM {0} WHERE {1}=%s'.format('notes, submit_time'), (nowTime,))
                         conn.commit()
                         res = Response(False, '提交失败，请重试', {})
                     else:
                         res = Response(True, '提交成功', {})
             else:  # 是修改以前的笔记
-                if not writeNoteFile(noteId, noteContent):
+                if not note.writeNoteFile(noteId, noteContent):
                     res = Response(False, '修改失败，请重试', {})
                 else:
                     # 这一步操作失败了也没有太大关系
@@ -84,7 +83,7 @@ def getNoteList():
 
 @NoteManagement.route('/getNote', methods = ['GET'])
 def getNote():
-    userId = getSessionUserId()
+    userId = session.getSessionUserId()
     if userId is None:
         res = Response(False, '登录状态失效', {}).getJson()
     else:
@@ -104,7 +103,7 @@ def getNote():
                 res = Response(False, '提交格式非法', {})
             else:
                 try:
-                    noteContent = readNoteFile(noteId)
+                    noteContent = note.readNoteFile(noteId)
                     cur.execute(
                         'SELECT {0},{1} FROM {2} WHERE {3}=%s'.format('name', 'last_modify_time', 'notes', 'id'),
                         noteId)
@@ -125,7 +124,7 @@ def getNote():
 
 @NoteManagement.route('/noteConvert', methods = ['POST'])
 def noteConvert():
-    userId = getSessionUserId()
+    userId = session.getSessionUserId()
     if userId is None:
         res = Response(False, '登录状态失效', {}).getJson()
     else:
