@@ -1,10 +1,10 @@
 from flask import Blueprint
 from flask import request
-from flask import session
-from flask import g
 
 from objects import Response
-from functions import log
+from functions.session import *
+from functions.note import *
+import database
 
 Login = Blueprint('Login', __name__)
 
@@ -17,7 +17,8 @@ def login():
     password = req['password']
 
     try:
-        cur = g.conn.cursor()
+        conn = database.conn
+        cur = conn.cursor()
 
         cur.execute('SELECT {0},{1} FROM {2} WHERE {3}=%s'.format('id', 'password', 'accounts', 'username'),
                     (username,))
@@ -28,7 +29,7 @@ def login():
             res = Response(False, '用户不存在', {})
         elif password == result[1]:
             res = Response(True, '登录成功', {})
-            session['id'] = result[2]
+            setSession(result[0])
         else:
             res = Response(False, '密码错误', {})
     except Exception as e:

@@ -1,17 +1,10 @@
 import atexit
-from flask import Flask, g
-import psycopg2
+from flask import Flask
+from database import connectDatabase, disconnectDatabase,conn
 from components import *
 from functions import log
 from routers import routers
 import os
-
-
-# 服务器启动时调用，连接数据库
-def connectDatabase(address, port, dbname, username, password):
-    return psycopg2.connect(hostaddr = address, port = port, dbname = dbname, user = username,
-                            password = password)
-
 
 # 读取设置文件
 try:
@@ -23,6 +16,14 @@ try:
     DATABASE_USERNAME = config['Database']['Username']
     DATABASE_PASSWORD = config['Database']['Password']
     NOTE_FILE_POSITION = config['File']['NoteFilePosition']
+
+    try:
+        connectDatabase(DATABASE_ADDRESS, DATABASE_PORT, DATABASE_NAME, DATABASE_USERNAME,
+                        DATABASE_PASSWORD)
+    except IOError as e:
+        log('数据库连接失败')
+        log(e)
+        exit(0)
 
     os.makedirs(NOTE_FILE_POSITION, 0o777, True)
 
@@ -37,15 +38,6 @@ try:
 
 
     routers.registerRouters(app)
-    if not hasattr(g, 'conn'):
-        g.conn = connectDatabase(DATABASE_ADDRESS, DATABASE_PORT, DATABASE_NAME, DATABASE_USERNAME,
-                                 DATABASE_PASSWORD)
-
-
-    def disconnectDatabase():
-        if hasattr(g, 'conn'):
-            g.conn.close()
-
 
     atexit.register(disconnectDatabase)  # 在应用程序退出之前关闭数据库连接
 

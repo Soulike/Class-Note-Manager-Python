@@ -1,20 +1,22 @@
-from flask import Blueprint, request, session, g
+from flask import Blueprint, request
 
 from modules import MDConverter
 from objects import Response
-import time
-from functions import *
+from functions.session import *
+from functions.log import *
+from functions.note import *
+import database
 
 NoteManagement = Blueprint('NoteManagement', __name__)
 
 
 @NoteManagement.route('/submitNote', methods = ['POST'])
 def submitNote():
-    userId = session['id']
+    userId = getSessionUserId()
     if userId is None:
-        res = Response(False, '登录状态失效', {}).getJson()
+        res = Response(False, '登录状态失效', {})
     else:
-        conn = g.conn
+        conn = database.conn
         cur = conn.cursor()
         cur.execute('SELECT {0} FROM {1} WHERE {2}=%s'.format('username', 'accounts', 'id'), (userId,))
         result = cur.fetchone()
@@ -27,7 +29,7 @@ def submitNote():
             fileName = req['fileName']
             noteContent = req['noteContent']
             noteId = req['noteId']
-            nowTime = round(time.time() * 1000)
+            nowTime = datetime.utcnow()
 
             if fileName is None or noteContent is None or noteId is None:
                 res = Response(False, '提交格式非法', {})
@@ -35,13 +37,14 @@ def submitNote():
                 try:
                     # 向数据库插入笔记信息
                     cur.execute(
-                        'INSERT INTO {0} (name, submit_time, last_modify_time, account_id) VALUES (%s, %s, %s, %s)'.format(
-                            'notes'), (fileName, nowTime, nowTime, userId))
+                        'INSERT INTO {0} ({1},{2},{3},{4}) VALUES (%s, %s, %s, %s)'.format(
+                            'notes', 'name', 'submit_time', 'last_update_time', 'account_id'),
+                        (fileName, nowTime, nowTime, userId))
                     conn.commit()
                 except Exception as e:
                     conn.rollback()
                     log(e)
-                    res = Response(False, '提交失败，请重试', {})
+                    res = Response(False, '提交失败，请检查是否与之前的笔记名重复', {})
                 else:
                     # 写入笔记文件
                     cur.execute('SELECT {0} FROM {1} WHERE {2}=%s'.format('id', 'notes', 'submit_time'), (nowTime,))
@@ -60,10 +63,11 @@ def submitNote():
                 else:
                     # 这一步操作失败了也没有太大关系
                     cur.execute(
-                        'UPDATE {0} SET {1} = {2} WHERE {3}=%s'.format('notes', 'last_modify_time', nowTime, 'noteId'),
+                        'UPDATE {0} SET {1} = {2} WHERE {3}=%s'.format('notes', 'last_update_time', nowTime, 'noteId'),
                         noteId)
                     conn.commit()
                     res = Response(True, '修改成功', {})
+        cur.close()
     return res.getJson()
 
 
@@ -74,16 +78,17 @@ def deleteNote():
 
 @NoteManagement.route('/getNoteList', methods = ['GET'])
 def getNoteList():
-    pass
+    res = Response(True, '笔记列表获取成功', [])
+    return res.getJson()
 
 
 @NoteManagement.route('/getNote', methods = ['GET'])
 def getNote():
-    userId = session['id']
+    userId = getSessionUserId()
     if userId is None:
         res = Response(False, '登录状态失效', {}).getJson()
     else:
-        conn = g.conn
+        conn = database.conn
         cur = conn.cursor()
         cur.execute('SELECT {0} FROM {1} WHERE {2}=%s'.format('username', 'accounts', 'id'), (userId,))
         result = cur.fetchone()
@@ -113,12 +118,15 @@ def getNote():
                     converter = MDConverter()
                     res = Response(True, '获取成功', {'title': title, 'lastModifiedDate': last_modify_time,
                                                   'content': converter.makeHtml(noteContent)})
+        cur.close()
+
     return res.getJson()
 
 
 @NoteManagement.route('/noteConvert', methods = ['POST'])
 def noteConvert():
-    if session['id'] is None:
+    userId = getSessionUserId()
+    if userId is None:
         res = Response(False, '登录状态失效', {}).getJson()
     else:
         req = request.get_json()
