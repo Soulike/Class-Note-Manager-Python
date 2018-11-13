@@ -1,9 +1,9 @@
 from flask import Blueprint
 from flask import request
 
-from objects import Response
-from functions import log, session
 import database
+from functions import log, session
+from objects import Response
 
 Login = Blueprint('Login', __name__)
 
@@ -17,12 +17,10 @@ def login():
 
     try:
         conn = database.conn
-        cur = conn.cursor()
-
-        cur.execute('SELECT {0},{1} FROM {2} WHERE {3}=%s'.format('id', 'password', 'accounts', 'username'),
-                    (username,))
-        result = cur.fetchone()
-        cur.close()
+        with conn.cursor() as cur:
+            cur.execute('SELECT {0},{1} FROM {2} WHERE {3}=%s'.format('id', 'password', 'accounts', 'username'),
+                        (username,))
+            result = cur.fetchone()
 
         if result is None or len(result) == 0:
             res = Response(False, '用户不存在', {})
