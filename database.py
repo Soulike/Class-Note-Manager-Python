@@ -10,6 +10,7 @@ def connectDatabase(address, port, dbname, username, password):
                             password = password)
 
 
+# 断开数据库连接，在程序退出时调用
 def disconnectDatabase():
     global conn
     conn.close()

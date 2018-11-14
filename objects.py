@@ -13,5 +13,4 @@ class Response:
             'msg': self.__msg,
             'data': self.__data
         }
-
         return json.dumps(ret)

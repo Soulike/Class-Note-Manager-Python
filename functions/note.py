@@ -1,12 +1,20 @@
+import os
+
 from main import NOTE_FILE_POSITION
 from .log import log
-import os
 
 
 # 读取笔记文件并返回内容
 def readNoteFile(noteId):
-    with open('{0}/{1}.md'.format(NOTE_FILE_POSITION, noteId), 'r') as file:
-        return file.read()
+    ret = None
+    try:
+        with open('{0}/{1}.md'.format(NOTE_FILE_POSITION, noteId), 'r') as file:
+            ret = file.read()
+    except IOError as e:
+        log(e)
+        ret = None
+    finally:
+        return ret
 
 
 # 删除笔记文件
