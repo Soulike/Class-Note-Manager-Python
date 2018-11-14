@@ -168,7 +168,7 @@ def getNoteList():
                         res = Response(False, '用户不存在', {})
                     else:
                         try:
-                            cur.execute('SELECT {0},{1},{2} FROM {3}'.format('id', 'name', 'last_update_time', 'notes'))
+                            cur.execute('SELECT {0},{1},{2} FROM {3} WHERE {4}=%s'.format('id', 'name', 'last_update_time', 'notes','account_id'), userId)
                         except Exception as e:
                             log('在处理删除笔记请求时出现数据库查询错误，错误信息：')
                             log(e)
