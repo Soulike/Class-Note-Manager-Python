@@ -159,7 +159,7 @@ def getNoteList():
                 try:
                     cur.execute('SELECT {0} FROM {1} WHERE {2}=%s'.format('username', 'accounts', 'id'), (userId,))
                 except Exception as e:
-                    log('在处理删除笔记请求时出现数据库查询错误，错误信息：')
+                    log('在处理获取笔记列表请求时出现数据库查询错误，错误信息：')
                     log(e)
                     res = Response(False, '服务器错误', {})
                 else:
@@ -170,7 +170,7 @@ def getNoteList():
                         try:
                             cur.execute('SELECT {0},{1},{2} FROM {3} WHERE {4}=%s'.format('id', 'name', 'last_update_time', 'notes','account_id'), （userId,))
                         except Exception as e:
-                            log('在处理删除笔记请求时出现数据库查询错误，错误信息：')
+                            log('在处理获取笔记列表请求时出现数据库查询错误，错误信息：')
                             log(e)
                             res = Response(False, '服务器错误', {})
                         else:
@@ -202,7 +202,7 @@ def getNote():
                 try:
                     cur.execute('SELECT {0} FROM {1} WHERE {2}=%s'.format('username', 'accounts', 'id'), (userId,))
                 except Exception as e:
-                    log('在处理删除笔记请求时出现数据库查询错误，错误信息：')
+                    log('在处理获取笔记请求时出现数据库查询错误，错误信息：')
                     log(e)
                     res = Response(False, '服务器错误', {})
                 else:
@@ -227,7 +227,7 @@ def getNote():
                                                                                       'id'),
                                         noteId)
                                 except Exception as e:
-                                    log('在处理删除笔记请求时出现数据库查询错误，错误信息：')
+                                    log('在处理获取笔记请求时出现数据库查询错误，错误信息：')
                                     log(e)
                                     res = Response(False, '服务器错误', {})
                                 else:
